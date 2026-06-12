@@ -1,0 +1,924 @@
+Here is the updated code.
+To personalize the experience while acknowledging ownership, I have added a **User Profile banner** in the header. It explicitly notes that the system is licensed/belongs to **Prince Akuaku**, but features a **"Logged in as:" selector** where you can dynamically enter or change the current operator's name.
+The application will immediately update the header greetings and greeting states to reflect whoever is currently tracking their packages.
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Package Productivity Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --card: #16191f;
+    --border: #1e2229;
+    --accent: #00e5a0;
+    --accent2: #00b8ff;
+    --warn: #ff6b35;
+    --text: #e8eaf0;
+    --muted: #5a6070;
+    --success: #00e5a0;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -200px; left: 50%; transform: translateX(-50%);
+    width: 800px; height: 400px;
+    background: radial-gradient(ellipse, rgba(0,229,160,0.07) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 760px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+
+  .header .badge-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .header .badge {
+    display: inline-block;
+    background: rgba(0,229,160,0.08);
+    border: 1px solid rgba(0,229,160,0.2);
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    border-radius: 20px;
+  }
+
+  .header .badge.owner-badge {
+    background: rgba(0,184,255,0.08);
+    border: 1px solid rgba(0,184,255,0.2);
+    color: var(--accent2);
+  }
+
+  .header h1 {
+    font-size: clamp(28px, 6vw, 48px);
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    color: var(--text);
+  }
+
+  .header h1 span {
+    color: var(--accent);
+  }
+
+  .header p {
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 10px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* Identity / Operator Bar */
+  .operator-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 20px;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    flex-wrap: wrap;
+  }
+
+  .operator-meta {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .operator-meta .system-owner {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .operator-meta .system-owner strong {
+    color: var(--accent2);
+  }
+
+  .operator-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .operator-input-wrap label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text);
+    text-transform: uppercase;
+  }
+
+  .operator-input-wrap input {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 6px 12px;
+    outline: none;
+    width: 180px;
+    transition: border-color 0.2s;
+  }
+
+  .operator-input-wrap input:focus {
+    border-color: rgba(0,229,160,0.5);
+  }
+
+  /* Big Counter */
+  .counter-ring {
+    display: flex;
+    justify-content: center;
+    margin: 10px 0 32px;
+  }
+
+  .ring-wrap {
+    position: relative;
+    width: 220px; height: 220px;
+  }
+
+  .ring-wrap svg {
+    transform: rotate(-90deg);
+    width: 220px; height: 220px;
+  }
+
+  .ring-bg {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 10;
+  }
+
+  .ring-fill {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 10;
+    stroke-linecap: round;
+    stroke-dasharray: 628;
+    stroke-dashoffset: 628;
+    transition: stroke-dashoffset 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+    filter: drop-shadow(0 0 8px rgba(0,229,160,0.6));
+  }
+
+  .ring-fill.warn {
+    stroke: var(--accent2);
+    filter: drop-shadow(0 0 8px rgba(0,184,255,0.6));
+  }
+
+  .ring-fill.done {
+    stroke: var(--success);
+    filter: drop-shadow(0 0 14px rgba(0,229,160,0.9));
+  }
+
+  .ring-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+
+  .ring-center .big-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 44px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+    transition: color 0.3s;
+  }
+
+  .ring-center .ring-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .ring-center .ring-pct {
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 700;
+    margin-top: 6px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* Stats Row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 18px;
+    transition: border-color 0.3s;
+  }
+
+  .stat-card:hover { border-color: rgba(0,229,160,0.2); }
+
+  .stat-card .stat-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .stat-card .stat-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .stat-card .stat-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .stat-card.highlight .stat-value { color: var(--accent); }
+  .stat-card.highlight2 .stat-value { color: var(--accent2); }
+  .stat-card.highlight3 .stat-value { color: var(--warn); }
+
+  /* Progress Bar */
+  .progress-section {
+    margin-bottom: 28px;
+  }
+
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .progress-header span {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  .progress-header .progress-pct {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .progress-track {
+    height: 8px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 99px;
+    width: 0%;
+    transition: width 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+    box-shadow: 0 0 12px rgba(0,229,160,0.5);
+    position: relative;
+  }
+
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    right: 0; top: 50%; transform: translateY(-50%);
+    width: 14px; height: 14px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--accent);
+  }
+
+  /* Milestones */
+  .milestones {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .milestone {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    text-align: center;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .milestone.reached {
+    border-color: rgba(0,229,160,0.4);
+    background: rgba(0,229,160,0.05);
+  }
+
+  .milestone.reached::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0,229,160,0.05), transparent);
+  }
+
+  .milestone .m-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+  }
+
+  .milestone.reached .m-val { color: var(--accent); }
+
+  .milestone .m-label {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .milestone .m-check {
+    font-size: 8px;
+    color: var(--accent);
+    margin-top: 3px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .milestone.reached .m-check { opacity: 1; }
+
+  /* Paste Area */
+  .paste-section {
+    margin-bottom: 24px;
+  }
+
+  .paste-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .paste-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 130px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    padding: 18px 20px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.25s, box-shadow 0.25s;
+  }
+
+  textarea::placeholder { color: var(--muted); }
+
+  textarea:focus {
+    border-color: rgba(0,229,160,0.35);
+    box-shadow: 0 0 0 3px rgba(0,229,160,0.07);
+  }
+
+  /* MU List */
+  .mu-list-section {
+    margin-bottom: 24px;
+  }
+
+  .mu-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .mu-list-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .clear-btn {
+    background: none;
+    border: 1px solid rgba(255,107,53,0.3);
+    color: var(--warn);
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .clear-btn:hover {
+    background: rgba(255,107,53,0.1);
+    border-color: var(--warn);
+  }
+
+  .mu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .mu-list::-webkit-scrollbar { width: 4px; }
+  .mu-list::-webkit-scrollbar-track { background: var(--border); border-radius: 99px; }
+  .mu-list::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 99px; }
+
+  .mu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    animation: slideIn 0.3s ease forwards;
+    opacity: 0;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .mu-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mu-name strong {
+    color: var(--text);
+    display: block;
+    font-size: 12px;
+    margin-bottom: 2px;
+  }
+
+  .mu-pkg {
+    font-family: 'Space Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-left: 16px;
+    white-space: nowrap;
+  }
+
+  .mu-index {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    background: var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-right: 12px;
+    min-width: 28px;
+    text-align: center;
+  }
+
+  /* Done Banner */
+  .done-banner {
+    display: none;
+    background: linear-gradient(135deg, rgba(0,229,160,0.12), rgba(0,184,255,0.08));
+    border: 1px solid rgba(0,229,160,0.3);
+    border-radius: 14px;
+    padding: 20px 24px;
+    text-align: center;
+    margin-bottom: 24px;
+    animation: pulseGlow 2s ease infinite;
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 20px rgba(0,229,160,0.15); }
+    50%       { box-shadow: 0 0 40px rgba(0,229,160,0.3); }
+  }
+
+  .done-banner.show { display: block; }
+
+  .done-banner .done-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .done-banner .done-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 32px 20px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    border: 1px dashed var(--border);
+    border-radius: 14px;
+  }
+
+  .empty-state .empty-icon {
+    font-size: 28px;
+    margin-bottom: 10px;
+    opacity: 0.4;
+    font-family: monospace;
+  }
+
+  .goal-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+
+  .goal-input-row label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .goal-input-row input {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 8px 14px;
+    outline: none;
+    width: 100px;
+    transition: border-color 0.2s;
+  }
+
+  .goal-input-row input:focus { border-color: rgba(0,229,160,0.4); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="badge-row">
+      <div class="badge">WD Tracker</div>
+      <div class="badge owner-badge">Owner: Prince Akuaku</div>
+    </div>
+    <h1>Package <span>Productivity</span></h1>
+    <p>// active workspace environment</p>
+  </div>
+
+  <div class="operator-panel">
+    <div class="operator-meta">
+      <span class="system-owner">System Registry: <strong>PRINCE AKUAKU</strong></span>
+    </div>
+    <div class="operator-input-wrap">
+      <label for="operatorInput">Logged in as:</label>
+      <input type="text" id="operatorInput" value="Prince Akuaku" placeholder="Enter your name..." />
+    </div>
+  </div>
+
+  <div class="counter-ring">
+    <div class="ring-wrap">
+      <svg viewBox="0 0 220 220">
+        <circle class="ring-bg" cx="110" cy="110" r="100"/>
+        <circle class="ring-fill" id="ringFill" cx="110" cy="110" r="100"/>
+      </svg>
+      <div class="ring-center">
+        <div class="big-num" id="bigNum">0</div>
+        <div class="ring-label">packages</div>
+        <div class="ring-pct" id="ringPct">0%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card highlight">
+      <div class="stat-label">Total Packages</div>
+      <div class="stat-value" id="statTotal">0</div>
+      <div class="stat-sub">accumulated</div>
+    </div>
+    <div class="stat-card highlight2">
+      <div class="stat-label">MU Lines</div>
+      <div class="stat-value" id="statLines">0</div>
+      <div class="stat-sub">parsed</div>
+    </div>
+    <div class="stat-card highlight3">
+      <div class="stat-label">Remaining</div>
+      <div class="stat-value" id="statRemain">1000</div>
+      <div class="stat-sub">to goal</div>
+    </div>
+  </div>
+
+  <div class="progress-section">
+    <div class="progress-header">
+      <span>PROGRESS TO GOAL</span>
+      <span class="progress-pct" id="progPct">0 / 1000</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="milestones">
+      <div class="milestone" id="m250">
+        <div class="m-val">250</div>
+        <div class="m-label">25%</div>
+        <div class="m-check">REACHED</div>
+      </div>
+      <div class="milestone" id="m500">
+        <div class="m-val">500</div>
+        <div class="m-label">50%</div>
+        <div class="m-check">REACHED</div>
+      </div>
+      <div class="milestone" id="m750">
+        <div class="m-val">750</div>
+        <div class="m-label">75%</div>
+        <div class="m-check">REACHED</div>
+      </div>
+      <div class="milestone" id="m1000">
+        <div class="m-val">1000</div>
+        <div class="m-label">100%</div>
+        <div class="m-check">REACHED</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="goal-input-row">
+    <label>Daily Goal:</label>
+    <input type="number" id="goalInput" value="1000" min="1"/>
+    <span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)">packages</span>
+  </div>
+
+  <div class="done-banner" id="doneBanner">
+    <div class="done-title">GOAL REACHED!</div>
+    <div class="done-sub"><span id="bannerUser">Prince Akuaku</span>, you hit <span id="doneCount">1000</span> packages -- great work today.</div>
+  </div>
+
+  <div class="paste-section">
+    <div class="paste-label">Paste WD Here</div>
+    <textarea id="wdInput" placeholder="Paste your MU lines here...
+e.g.
+mu_GH-All-Network_1781185576781 (34 packages)
+mu_GH-All-Network_1781186113812 (59 packages)"></textarea>
+  </div>
+
+  <div class="mu-list-section">
+    <div class="mu-list-header">
+      <div class="mu-list-title">Parsed MU Lines</div>
+      <button class="clear-btn" id="clearBtn">Clear All</button>
+    </div>
+    <div class="mu-list" id="muList">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">[~]</div>
+        No MU data yet. Paste your WD above.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const wdInput       = document.getElementById('wdInput');
+  const muList        = document.getElementById('muList');
+  const emptyState    = document.getElementById('emptyState');
+  const clearBtn      = document.getElementById('clearBtn');
+  const goalInput     = document.getElementById('goalInput');
+  const operatorInput = document.getElementById('operatorInput');
+  const bigNum        = document.getElementById('bigNum');
+  const ringPct       = document.getElementById('ringPct');
+  const ringFill      = document.getElementById('ringFill');
+  const progFill      = document.getElementById('progressFill');
+  const progPct       = document.getElementById('progPct');
+  const statTotal     = document.getElementById('statTotal');
+  const statLines     = document.getElementById('statLines');
+  const statRemain    = document.getElementById('statRemain');
+  const doneBanner    = document.getElementById('doneBanner');
+  const doneCount     = document.getElementById('doneCount');
+  const bannerUser    = document.getElementById('bannerUser');
+
+  let entries = [];
+  const CIRCUMFERENCE = 2 * Math.PI * 100; // ~628.3
+
+  function getGoal() {
+    return Math.max(1, parseInt(goalInput.value) || 1000);
+  }
+
+  function getOperatorName() {
+    return operatorInput.value.trim() || "Operator";
+  }
+
+  function parseWD(text) {
+    const regex = /([^\n\r]+?)\s*\((\d+)\s+packages?\)/gi;
+    const found = [];
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      found.push({ name: match[1].trim(), count: parseInt(match[2]) });
+    }
+    return found;
+  }
+
+  function animateNumber(el, to) {
+    const from = parseInt(el.textContent.replace(/,/g,'')) || 0;
+    const dur = 600;
+    const start = performance.now();
+    function step(now) {
+      const p = Math.min((now - start) / dur, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(from + (to - from) * ease).toLocaleString();
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function updateUI() {
+    const goal = getGoal();
+    const total = entries.reduce((s, e) => s + e.count, 0);
+    const pct = Math.min(total / goal, 1);
+    const remaining = Math.max(goal - total, 0);
+    const currentOperator = getOperatorName();
+
+    // Animate numbers
+    animateNumber(bigNum, total);
+    animateNumber(statTotal, total);
+    animateNumber(statLines, entries.length);
+    animateNumber(statRemain, remaining);
+
+    // Ring
+    const offset = CIRCUMFERENCE - pct * CIRCUMFERENCE;
+    ringFill.style.strokeDashoffset = offset;
+    ringFill.style.strokeDasharray = CIRCUMFERENCE;
+    ringPct.textContent = Math.round(pct * 100) + '%';
+    if (pct >= 1) ringFill.classList.add('done');
+    else ringFill.classList.remove('done');
+
+    // Progress bar
+    progFill.style.width = (pct * 100) + '%';
+    progPct.textContent = total.toLocaleString() + ' / ' + goal.toLocaleString();
+
+    // Milestones
+    const milestones = [
+      { id: 'm250', val: goal * 0.25 },
+      { id: 'm500', val: goal * 0.50 },
+      { id: 'm750', val: goal * 0.75 },
+      { id: 'm1000', val: goal },
+    ];
+    const pctLabels = ['25%','50%','75%','100%'];
+    milestones.forEach((m, i) => {
+      const el = document.getElementById(m.id);
+      el.querySelector('.m-val').textContent = Math.round(m.val).toLocaleString();
+      el.querySelector('.m-label').textContent = pctLabels[i];
+      if (total >= m.val) el.classList.add('reached');
+      else el.classList.remove('reached');
+    });
+
+    // Done banner personalization
+    if (total >= goal) {
+      doneBanner.classList.add('show');
+      doneCount.textContent = total.toLocaleString();
+      bannerUser.textContent = currentOperator;
+    } else {
+      doneBanner.classList.remove('show');
+    }
+
+    // Render list
+    renderList();
+  }
+
+  function renderList() {
+    muList.innerHTML = '';
+    if (entries.length === 0) {
+      muList.appendChild(emptyState);
+      return;
+    }
+    entries.forEach((e, i) => {
+      const item = document.createElement('div');
+      item.className = 'mu-item';
+      item.style.animationDelay = (i * 0.03) + 's';
+      item.innerHTML = `
+        <div class="mu-index">#${i + 1}</div>
+        <div class="mu-name">
+          <strong>${escapeHTML(e.name)}</strong>
+          packages
+        </div>
+        <div class="mu-pkg">+${e.count}</div>
+      `;
+      muList.appendChild(item);
+    });
+  }
+
+  function escapeHTML(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Live parse on paste/type
+  wdInput.addEventListener('input', () => {
+    const parsed = parseWD(wdInput.value);
+    entries = parsed;
+    updateUI();
+  });
+
+  // Handle paste event
+  wdInput.addEventListener('paste', () => {
+    setTimeout(() => {
+      const parsed = parseWD(wdInput.value);
+      entries = parsed;
+      updateUI();
+    }, 10);
+  });
+
+  goalInput.addEventListener('input', updateUI);
+  operatorInput.addEventListener('input', updateUI);
+
+  clearBtn.addEventListener('click', () => {
+    wdInput.value = '';
+    entries = [];
+    updateUI();
+  });
+
+  // Init
+  updateUI();
+</script>
+</body>
+</html>
+
+```
